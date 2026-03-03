@@ -33,7 +33,6 @@
       padding: 24px;
     }
 
-    /* Background grid */
     body::before {
       content: '';
       position: fixed;
@@ -90,13 +89,10 @@
       padding: 28px 24px;
       position: relative;
       overflow: hidden;
-      transition: transform 0.2s, border-color 0.2s;
+      transition: transform 0.2s;
     }
 
-    .card:hover {
-      transform: translateY(-2px);
-    }
-
+    .card:hover { transform: translateY(-2px); }
     .card.btc { border-top: 2px solid var(--btc); }
     .card.eth { border-top: 2px solid var(--eth); }
 
@@ -154,7 +150,6 @@
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
     @keyframes flash { 0%{opacity:0.3} 100%{opacity:1} }
 
-    /* Table section */
     .table-section {
       background: var(--card);
       border: 1px solid var(--border);
@@ -173,10 +168,7 @@
       border-bottom: 1px solid var(--border);
     }
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-    }
+    table { width: 100%; border-collapse: collapse; }
 
     thead th {
       padding: 12px 24px;
@@ -196,12 +188,8 @@
       font-size: 0.9rem;
     }
 
-    .coin-label {
-      display: flex; align-items: center; gap: 8px;
-    }
-    .dot {
-      width: 8px; height: 8px; border-radius: 50%;
-    }
+    .coin-label { display: flex; align-items: center; gap: 8px; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; }
     .dot.btc { background: var(--btc); }
     .dot.eth { background: var(--eth); }
 
@@ -244,7 +232,7 @@
 <div class="wrapper">
   <header>
     <h1>Crypto Tracker</h1>
-    <p>Live prices via CoinGecko API &mdash; updates every 30s</p>
+    <p>Live prices via CoinGecko API &mdash; updates every 10s</p>
   </header>
 
   <div class="cards">
@@ -286,13 +274,13 @@
         <tr>
           <td><span class="coin-label"><span class="dot btc"></span>Bitcoin</span></td>
           <td>BTC</td>
-          <td id="btc-table">—</td>
+          <td id="btc-table">--</td>
           <td>CoinGecko</td>
         </tr>
         <tr>
           <td><span class="coin-label"><span class="dot eth"></span>Ethereum</span></td>
           <td>ETH</td>
-          <td id="eth-table">—</td>
+          <td id="eth-table">--</td>
           <td>CoinGecko</td>
         </tr>
       </tbody>
@@ -339,7 +327,7 @@
   }
 
   fetchPrices();
-  setInterval(fetchPrices, 30000);
+  setInterval(fetchPrices, 10000);
 </script>
 </body>
 </html>
