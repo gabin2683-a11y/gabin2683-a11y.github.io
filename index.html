@@ -1,34 +1,347 @@
-async function fetchPrices() {
-  try {
-    const res = await fetch('https://api.coincap.io/v2/assets?ids=bitcoin,ethereum');
-    if (!res.ok) throw new Error('Network error');
-    const data = await res.json();
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Crypto Price Tracker</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap');
 
-    const btc = data.data.find(c => c.id === 'bitcoin');
-    const eth = data.data.find(c => c.id === 'ethereum');
+    :root {
+      --bg: #060608;
+      --card: #0f0f12;
+      --border: #1e1e24;
+      --btc: #f7931a;
+      --eth: #627eea;
+      --green: #00d395;
+      --red: #ff4560;
+      --text: #f0f0f0;
+      --muted: #555;
+    }
 
-    const btcPrice = '$' + parseFloat(btc.priceUsd).toLocaleString('en-US', {maximumFractionDigits: 2});
-    const ethPrice = '$' + parseFloat(eth.priceUsd).toLocaleString('en-US', {maximumFractionDigits: 2});
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
-    const btcEl = document.getElementById('btc-price');
-    const ethEl = document.getElementById('eth-price');
-    btcEl.textContent = btcPrice;
-    ethEl.textContent = ethPrice;
-    btcEl.className = 'price updated';
-    ethEl.className = 'price updated';
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Syne', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
 
-    document.getElementById('btc-table').textContent = btcPrice;
-    document.getElementById('eth-table').textContent = ethPrice;
+    /* Background grid */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+      background-size: 48px 48px;
+      pointer-events: none;
+    }
 
-    const now = new Date().toLocaleTimeString();
-    document.getElementById('last-updated').textContent = 'Last updated: ' + now;
-    document.getElementById('error-msg').style.display = 'none';
+    .wrapper {
+      width: 100%;
+      max-width: 640px;
+      position: relative;
+      z-index: 1;
+    }
 
-  } catch (err) {
-    document.getElementById('error-msg').style.display = 'block';
-    document.getElementById('last-updated').textContent = 'Update failed — retrying...';
+    header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    header h1 {
+      font-size: 2.4rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #f7931a, #627eea);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    header p {
+      color: var(--muted);
+      font-family: 'Space Mono', monospace;
+      font-size: 0.75rem;
+      margin-top: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px 24px;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+    }
+
+    .card.btc { border-top: 2px solid var(--btc); }
+    .card.eth { border-top: 2px solid var(--eth); }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: -40px; right: -40px;
+      width: 120px; height: 120px;
+      border-radius: 50%;
+      opacity: 0.06;
+    }
+    .card.btc::before { background: var(--btc); }
+    .card.eth::before { background: var(--eth); }
+
+    .coin-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .coin-icon {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem;
+      font-weight: 700;
+    }
+    .btc .coin-icon { background: rgba(247,147,26,0.15); color: var(--btc); }
+    .eth .coin-icon { background: rgba(98,126,234,0.15); color: var(--eth); }
+
+    .coin-name {
+      font-size: 0.85rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .coin-symbol {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.7rem;
+      color: var(--muted);
+    }
+
+    .price {
+      font-family: 'Space Mono', monospace;
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      min-height: 2rem;
+    }
+
+    .price.loading { color: var(--muted); animation: pulse 1.2s infinite; }
+    .price.updated { animation: flash 0.4s ease; }
+
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    @keyframes flash { 0%{opacity:0.3} 100%{opacity:1} }
+
+    /* Table section */
+    .table-section {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+
+    .table-title {
+      padding: 16px 24px;
+      font-size: 0.75rem;
+      font-family: 'Space Mono', monospace;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    thead th {
+      padding: 12px 24px;
+      text-align: left;
+      font-size: 0.7rem;
+      font-family: 'Space Mono', monospace;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      background: #0c0c0f;
+    }
+
+    tbody td {
+      padding: 16px 24px;
+      border-top: 1px solid var(--border);
+      font-family: 'Space Mono', monospace;
+      font-size: 0.9rem;
+    }
+
+    .coin-label {
+      display: flex; align-items: center; gap: 8px;
+    }
+    .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+    }
+    .dot.btc { background: var(--btc); }
+    .dot.eth { background: var(--eth); }
+
+    .status-bar {
+      text-align: center;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.68rem;
+      color: var(--muted);
+      padding: 8px;
+    }
+
+    .status-dot {
+      display: inline-block;
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+      margin-right: 6px;
+      animation: blink 2s infinite;
+    }
+
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+
+    .error-msg {
+      color: var(--red);
+      font-family: 'Space Mono', monospace;
+      font-size: 0.75rem;
+      text-align: center;
+      padding: 8px;
+      display: none;
+    }
+
+    @media (max-width: 480px) {
+      .cards { grid-template-columns: 1fr; }
+      header h1 { font-size: 1.8rem; }
+      .price { font-size: 1.2rem; }
+    }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+  <header>
+    <h1>Crypto Tracker</h1>
+    <p>Live prices via CoinGecko API &mdash; updates every 30s</p>
+  </header>
+
+  <div class="cards">
+    <div class="card btc">
+      <div class="coin-header">
+        <div class="coin-icon">&#8383;</div>
+        <div>
+          <div class="coin-name">Bitcoin</div>
+          <div class="coin-symbol">BTC / USD</div>
+        </div>
+      </div>
+      <div class="price loading" id="btc-price">Loading...</div>
+    </div>
+
+    <div class="card eth">
+      <div class="coin-header">
+        <div class="coin-icon">&#9830;</div>
+        <div>
+          <div class="coin-name">Ethereum</div>
+          <div class="coin-symbol">ETH / USD</div>
+        </div>
+      </div>
+      <div class="price loading" id="eth-price">Loading...</div>
+    </div>
+  </div>
+
+  <div class="table-section">
+    <div class="table-title">Price Overview</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Coin</th>
+          <th>Symbol</th>
+          <th>Price (USD)</th>
+          <th>Source</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="coin-label"><span class="dot btc"></span>Bitcoin</span></td>
+          <td>BTC</td>
+          <td id="btc-table">—</td>
+          <td>CoinGecko</td>
+        </tr>
+        <tr>
+          <td><span class="coin-label"><span class="dot eth"></span>Ethereum</span></td>
+          <td>ETH</td>
+          <td id="eth-table">—</td>
+          <td>CoinGecko</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="status-bar">
+    <span class="status-dot"></span>
+    <span id="last-updated">Fetching prices...</span>
+  </div>
+  <div class="error-msg" id="error-msg">Could not fetch prices. Retrying...</div>
+</div>
+
+<script>
+  async function fetchPrices() {
+    try {
+      const res = await fetch('https://api.coincap.io/v2/assets?ids=bitcoin,ethereum');
+      if (!res.ok) throw new Error('Network error');
+      const data = await res.json();
+
+      const btc = data.data.find(c => c.id === 'bitcoin');
+      const eth = data.data.find(c => c.id === 'ethereum');
+
+      const btcPrice = '$' + parseFloat(btc.priceUsd).toLocaleString('en-US', {maximumFractionDigits: 2});
+      const ethPrice = '$' + parseFloat(eth.priceUsd).toLocaleString('en-US', {maximumFractionDigits: 2});
+
+      const btcEl = document.getElementById('btc-price');
+      const ethEl = document.getElementById('eth-price');
+
+      btcEl.textContent = btcPrice;
+      ethEl.textContent = ethPrice;
+      btcEl.className = 'price updated';
+      ethEl.className = 'price updated';
+
+      document.getElementById('btc-table').textContent = btcPrice;
+      document.getElementById('eth-table').textContent = ethPrice;
+
+      const now = new Date().toLocaleTimeString();
+      document.getElementById('last-updated').textContent = 'Last updated: ' + now;
+      document.getElementById('error-msg').style.display = 'none';
+
+    } catch (err) {
+      document.getElementById('error-msg').style.display = 'block';
+      document.getElementById('last-updated').textContent = 'Update failed — retrying...';
+    }
   }
-}
 
-fetchPrices();
-setInterval(fetchPrices, 30000);
+  fetchPrices();
+  setInterval(fetchPrices, 30000);
+</script>
+</body>
+</html>
