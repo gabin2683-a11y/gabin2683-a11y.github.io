@@ -309,19 +309,17 @@
 <script>
   async function fetchPrices() {
     try {
-      const res = await fetch('https://api.coincap.io/v2/assets?ids=bitcoin,ethereum');
+      const url = 'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd';
+      const proxy = 'https://corsproxy.io/?' + encodeURIComponent(url);
+      const res = await fetch(proxy);
       if (!res.ok) throw new Error('Network error');
       const data = await res.json();
 
-      const btc = data.data.find(c => c.id === 'bitcoin');
-      const eth = data.data.find(c => c.id === 'ethereum');
-
-      const btcPrice = '$' + parseFloat(btc.priceUsd).toLocaleString('en-US', {maximumFractionDigits: 2});
-      const ethPrice = '$' + parseFloat(eth.priceUsd).toLocaleString('en-US', {maximumFractionDigits: 2});
+      const btcPrice = '$' + data.bitcoin.usd.toLocaleString('en-US', {maximumFractionDigits: 2});
+      const ethPrice = '$' + data.ethereum.usd.toLocaleString('en-US', {maximumFractionDigits: 2});
 
       const btcEl = document.getElementById('btc-price');
       const ethEl = document.getElementById('eth-price');
-
       btcEl.textContent = btcPrice;
       ethEl.textContent = ethPrice;
       btcEl.className = 'price updated';
